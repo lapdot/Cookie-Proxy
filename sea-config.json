@@ -1,0 +1,9 @@
+{
+  "executable": "/Users/lapdot/.asdf/installs/nodejs/25.6.0/bin/node",
+  "main": "build/cookieproxy-bundle.cjs",
+  "mainFormat": "commonjs",
+  "output": "build/cookieproxy",
+  "disableExperimentalSEAWarning": true,
+  "useSnapshot": false,
+  "useCodeCache": false
+}

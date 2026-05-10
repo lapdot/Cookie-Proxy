@@ -1,0 +1,27 @@
+{
+  "name": "cookieproxy",
+  "version": "0.1.0",
+  "description": "CLI-first tool for selecting cookie sets and fetching HTML with them.",
+  "type": "module",
+  "bin": {
+    "cookieproxy": "./dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "build:bundle": "esbuild src/cli/index.ts --bundle --platform=node --target=node25 --format=cjs --outfile=build/cookieproxy-bundle.cjs",
+    "dev": "tsx src/cli/index.ts",
+    "package:sea": "npm run build:bundle && node --build-sea sea-config.json",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^24.9.1",
+    "esbuild": "^0.27.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
