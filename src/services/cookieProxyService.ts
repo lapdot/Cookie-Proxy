@@ -19,6 +19,7 @@ export async function runCookieProxy(options: CliOptions, logger: Logger): Promi
     targetUrl,
     cookieSets,
     options.timeoutMs,
-    options.maxRedirects
+    options.maxRedirects,
+    logger
   );
 }

@@ -2,74 +2,118 @@
 
 ## Purpose
 
-CookieProxy will use `tough-cookie` as its core cookie engine, with behavior based on RFC 6265 plus a small set of project-specific adjustments.
+CookieProxy uses a hybrid cookie model:
 
-This document is the place to define those adjustments clearly before or during implementation.
+- CookieProxy owns cookie-file loading, normalization, and winning-file selection
+- `tough-cookie` owns per-request cookie applicability and outbound cookie-header serialization
+- `undici` owns HTTP transport
 
-## Baseline Behavior
-
-The default policy should follow the usual RFC 6265 concepts:
-
-- domain matching
-- path matching
-- host-only vs domain cookies
-- expiry and max-age handling
-- secure-cookie behavior
-- cookie ordering and applicability to a request URL
+This document describes the implemented cookie behavior for the current CLI MVP.
 
 ## Input Cookie Format
 
 - Each cookie file is a JSON file
-- The file name follows a domain-oriented pattern such as `zhihu.com.json`, `foreignaffairs.com.json`, or `michaeljburry.substack.com.json`
-- Each file contains a list of cookie objects
-- Cookie objects use browser-export-style fields, for example:
+- The file name is a domain-oriented hint such as `zhihu.com.json` or `michaeljburry.substack.com.json`
+- Each file contains a list of browser-export-style cookie objects
 
-```json
-{
-  "domain": ".substack.com",
-  "expirationDate": 1812267128.541113
-}
-```
+### Required fields
 
-- Additional fields are expected and should be mapped into the internal cookie model during normalization
+- `name`
+- `domain`
 
-## Confirmed RFC 6265 Adjustment
+### Optional or defaulted fields
 
-The currently confirmed project-specific change is in `sameSite` handling:
+- `value`: defaults to `""`
+- `path`: defaults to `/`
+- `secure`: defaults to `false`
+- `httpOnly` or `http_only`: defaults to `false`
+- `hostOnly` or `host_only`: inferred if missing
+- `sameSite`: normalized if present
+- `expirationDate`, `expires`, or `expiry`: parsed if present
 
-- `unspecified` should be treated as `Lax`
-- `no_restriction` should be treated as `None`
+## Normalization Rules
 
-This mapping should happen during cookie normalization so later matching logic can operate on one consistent representation.
+### Host and domain
 
-## Project-Specific Policy Layer
+- Cookie domains are normalized to lowercase hostnames without a leading dot.
+- `hostOnly` is `true` if:
+  - `hostOnly` or `host_only` is explicitly `true`, or
+  - the original domain does not start with `.`
+- Otherwise the cookie is treated as a domain cookie.
 
-Any deviation from standard RFC 6265 behavior should live in one explicit policy module, currently planned as:
+### Expiry fields
 
-`src/cookies/policy.ts`
+- CookieProxy accepts expiry values from:
+  - `expirationDate`
+  - `expires`
+  - `expiry`
+- Numeric values are interpreted as:
+  - milliseconds if they are already large timestamp values
+  - seconds if they look like Unix-second values
+- Non-empty string values are interpreted as:
+  - numeric timestamps when possible
+  - otherwise `Date.parse(...)`
 
-That module should be responsible for:
+### SameSite mapping
 
-- documenting accepted deviations
-- isolating custom matching logic
-- making edge cases easy to test
-- preventing policy changes from being scattered across the codebase
+- missing or unknown `sameSite` values normalize to `Lax`
+- `unspecified` normalizes to `Lax`
+- `no_restriction` normalizes to `None`
+- `none` normalizes to `None`
+- `strict` normalizes to `Strict`
 
-## Planned Questions To Resolve
+## Selection Model
 
-- Which nonstandard cookie-file quirks should be tolerated during parsing?
-- Should invalid or partially invalid cookie records be skipped, repaired, or fail the run?
-- If multiple cookie files match a URL, what exact precedence rules should decide the winner?
-- During redirects, should cookie applicability be recalculated against the redirected URL each time?
+- CookieProxy does not merge all cookie files into one global jar.
+- For each request URL, CookieProxy selects one winning cookie file.
+- Selection uses:
+  - domain-oriented file-name hints
+  - cookie applicability according to CookieProxy's matching rules
+  - scoring that prefers more specific hosts and useful paths
 
-## Suggested Principle
+The result is an effective request model of one selected cookie file per hop.
 
-Prefer predictable and testable behavior over permissive but opaque behavior. If we bend the standard, we should do it deliberately and document the reason here.
+## Request-Time Cookie Behavior
 
-## Next Step
+### CookieProxy responsibilities
 
-As implementation starts, this file should be updated with:
+- load cookie files
+- normalize cookie records
+- score candidate files
+- choose the winning file for the current URL
+- recompute selection after redirects
 
-- the exact field mapping from input JSON to the internal cookie model
-- the actual project-specific RFC 6265 deviations
-- concrete examples of matching and rejection behavior
+### Tough-cookie responsibilities
+
+- populate a fresh per-request jar from the selected file
+- determine which cookies apply to the current URL
+- enforce domain, path, secure, host-only, and expiry behavior
+- serialize the outbound `Cookie` header
+
+### Undici responsibilities
+
+- execute the HTTP request
+- return status, headers, and body data to the request pipeline
+
+## Redirect Rule
+
+- Redirects are handled manually by CookieProxy.
+- For each redirect target:
+  - the redirect URL is resolved
+  - cookie-file selection is rerun for the new URL
+  - a new `tough-cookie` jar is built from the newly selected file
+  - the next request is issued with that jar
+
+This means a redirect can legitimately switch the selected cookie file, including local cases such as `127.0.0.1` redirecting to `localhost`.
+
+## Local Development Compatibility
+
+- The per-request `tough-cookie` jar disables public-suffix rejection.
+- This is intentional so local hosts such as `localhost` work during testing and redirect flows.
+- This setting is scoped to the in-memory jar created for each request hop.
+
+## Current Open Policy Questions
+
+- Should partially invalid cookie records fail the entire run or be skipped more selectively?
+- Which malformed browser-export quirks should be tolerated automatically?
+- Should CookieProxy eventually support any cookie-file repair behavior, or stay strict and explicit?

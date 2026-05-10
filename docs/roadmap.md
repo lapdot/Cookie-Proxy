@@ -1,177 +1,102 @@
 # CookieProxy Roadmap
 
-## Purpose
+## Current Status
 
-This roadmap turns the MVP plan into a practical execution sequence for the first implementation passes.
+CookieProxy has a working CLI MVP. The current implementation:
 
-The current goal is a CLI-first HTML-only tool that:
+1. loads a directory of JSON cookie files
+2. normalizes browser-export-style cookie records
+3. selects one best cookie file for the current URL
+4. loads the selected file into a per-hop `tough-cookie` jar
+5. performs HTTP requests with `undici`
+6. manually follows redirects and reselects cookies for redirect targets
+7. outputs HTML to stdout or a file
 
-1. reads a directory of JSON cookie files
-2. selects the correct cookie set for a target URL
-3. applies CookieProxy's RFC-6265-based cookie policy
-4. fetches the target page with `undici`
-5. outputs HTML
+## Implemented Milestones
 
-## Milestone 0: Project Scaffold
+### Implemented: Project scaffold
 
-### Goal
+- TypeScript CLI project structure
+- test setup with `vitest`
+- CLI entrypoint and service orchestration
 
-Create the initial TypeScript CLI project structure and establish development conventions.
+### Implemented: Cookie file loading
 
-### Deliverables
+- JSON cookie directory scanning
+- JSON parsing for cookie files
+- domain-oriented file-name hints
 
-- `package.json`
-- `tsconfig.json`
-- `src/` directory structure
-- `tests/` directory structure
-- initial CLI entrypoint
-- formatter and test scripts
+### Implemented: Cookie normalization
 
-### Exit criteria
+- normalized internal cookie model
+- expiration parsing from `expirationDate`, `expires`, and `expiry`
+- `sameSite` normalization:
+  - `unspecified` -> `Lax`
+  - `no_restriction` -> `None`
+- host-only derivation from explicit flags or leading-dot domain absence
 
-- the project installs and runs locally
-- a placeholder CLI command executes successfully
+### Implemented: Cookie matching and selection
 
-## Milestone 1: Cookie File Loading
+- candidate scoring using file-name hints plus cookie applicability
+- domain, path, expiry, and secure filtering
+- winning-file selection for the current URL
+- debug explanation for match decisions
 
-### Goal
-
-Load JSON cookie files from a directory and parse them safely.
-
-### Deliverables
-
-- cookie directory scanner
-- JSON parser for cookie files
-- input validation for file shape
-- structured error reporting for malformed files
-
-### Notes
-
-- file names follow domain-based patterns such as `zhihu.com.json`, `substack.com.json`, or `michaeljburry.substack.com.json`
-- each file contains a list of cookie objects
-- file names should be treated as selection hints, not as the sole source of truth
-
-### Exit criteria
-
-- the CLI can enumerate cookie files
-- valid JSON cookie files are loaded into memory
-- invalid files produce clear diagnostics
-
-## Milestone 2: Cookie Normalization
-
-### Goal
-
-Map input cookie objects into one internal model that the rest of the system can use consistently.
-
-### Deliverables
-
-- normalized internal cookie type
-- field-mapping layer from JSON input to internal cookie objects
-- conversion for expiration fields
-- `sameSite` normalization rules
-
-### Confirmed policy mappings
-
-- `sameSite: "unspecified"` -> `Lax`
-- `sameSite: "no_restriction"` -> `None`
-
-### Exit criteria
-
-- all loaded cookies can be normalized or rejected with explicit reasons
-- normalization behavior is covered by unit tests
-
-## Milestone 3: Cookie Matching And Selection
-
-### Goal
-
-Choose the best cookie file for a target URL.
-
-### Deliverables
-
-- candidate selection from file names and domains
-- cookie-level domain and path matching
-- expiry filtering
-- secure-cookie handling
-- scoring logic for competing cookie files
-- debug explanation for why a file won
-
-### Exit criteria
-
-- the tool can select one best cookie set for representative test URLs
-- debug mode explains the match decision clearly
-
-## Milestone 4: HTTP Fetch Pipeline
-
-### Goal
-
-Fetch the requested page with the selected cookies and return HTML.
-
-### Deliverables
+### Implemented: HTTP fetch pipeline
 
 - `undici` request layer
 - `tough-cookie` jar integration
-- redirect handling
-- timeout handling
+- manual redirect handling
+- cookie reselection on redirect targets
+- timeout support
 - HTML response output
 
-### Exit criteria
+### Implemented: CLI usability
 
-- the tool performs a request with the selected cookies
-- redirects are handled predictably
-- HTML is written to stdout or a file
+- `--cookies`
+- `--url`
+- `--output`
+- `--timeout`
+- `--max-redirects`
+- `--verbose`
+- `--debug-cookie-match`
+- meaningful exit behavior for usage and runtime failures
 
-## Milestone 5: CLI Usability
+### Implemented: Test coverage
 
-### Goal
+- unit coverage for policy, matching, jar conversion, and request pipeline
+- integration coverage against a local HTTP server
+- redirect tests including host changes such as `127.0.0.1` to `localhost`
 
-Make the tool pleasant and predictable to use from the command line.
+## Current Known Limitations
 
-### Deliverables
+- Only JSON cookie files are supported
+- Cookie files are not merged into one shared jar; one file wins per hop
+- Response handling is HTML-only
+- No retry strategy beyond timeout failure
+- No browser execution, DOM rendering, or API/server mode
 
-- polished argument parsing
-- help text
-- verbose mode
-- debug-cookie-match mode
-- output-file support
-- meaningful exit codes
+## Next Milestones
 
-### Exit criteria
+### Next: Hardening and diagnostics
 
-- the CLI is usable without reading implementation details
-- common failure paths have clear messages
+- improve malformed-cookie diagnostics
+- document more cookie-file edge cases
+- make timeout and redirect failures easier to interpret
 
-## Milestone 6: Testing And Hardening
+### Next: Policy clarification
 
-### Goal
+- define how tolerant parsing should be for partially invalid cookie records
+- decide whether any nonstandard cookie-file repairs should be supported
+- document any future deviations from baseline RFC 6265 behavior explicitly
 
-Cover the risky parts before expanding scope.
+### Next: Broader input support
 
-### Deliverables
+- consider non-JSON cookie formats only after the JSON MVP is stable
 
-- unit tests for parsing and normalization
-- unit tests for `sameSite` policy behavior
-- unit tests for domain/path matching
-- integration tests with fixture cookie folders
-- integration tests against a local HTTP server
+## Definition Of Done For The Current MVP
 
-### Exit criteria
-
-- core logic has automated coverage
-- representative edge cases are captured by fixtures
-
-## Recommended Build Order
-
-1. scaffold project structure
-2. implement cookie file loading
-3. implement normalization
-4. implement matching and scoring
-5. implement HTTP fetch flow
-6. polish CLI behavior
-7. add test coverage and hardening
-
-## MVP Definition Of Done
-
-The MVP is complete when a user can run a command like:
+The current MVP is considered complete because a user can:
 
 ```bash
 cookieproxy \
@@ -180,20 +105,12 @@ cookieproxy \
   --output ./page.html
 ```
 
-and the tool:
+and the tool will:
 
-- loads JSON cookie files
-- normalizes cookie records
-- applies the current cookie policy
-- selects the best cookie file for the URL
-- fetches the page with `undici`
-- writes the returned HTML
-
-## Deferred Until After MVP
-
-- browser rendering
-- DOM serialization
-- non-JSON cookie formats
-- API/server mode
-- advanced caching
-- distributed or scheduled execution
+- load JSON cookie files
+- normalize cookie records
+- select the best cookie file
+- perform requests with `undici`
+- apply cookies through `tough-cookie`
+- follow redirects with cookie reselection
+- write HTML output

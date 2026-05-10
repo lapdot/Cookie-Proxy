@@ -1,8 +1,7 @@
 import type {
   CookieSelectionExplanation,
   CookieSelectionResult,
-  CookieSet,
-  NormalizedCookie
+  CookieSet
 } from "../core/types.js";
 import { isCookieApplicable } from "./policy.js";
 
@@ -87,11 +86,4 @@ function scoreCookieSet(cookieSet: CookieSet, targetUrl: URL, now: number): Cook
     matchedDomains: Array.from(new Set(applicableCookies.map((cookie) => cookie.domain))).sort(),
     rejectedReasons
   };
-}
-
-export function buildCookieHeader(cookies: NormalizedCookie[]): string {
-  return [...cookies]
-    .sort((left, right) => right.path.length - left.path.length)
-    .map((cookie) => `${cookie.name}=${cookie.value}`)
-    .join("; ");
 }

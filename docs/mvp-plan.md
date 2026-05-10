@@ -1,55 +1,54 @@
-# CookieProxy MVP Plan
+# CookieProxy MVP Specification
 
 ## Purpose
 
 CookieProxy is a CLI tool that:
 
-1. Reads a folder of cookie files
+1. Reads a folder of JSON cookie files
 2. Accepts a target URL
-3. Selects the most appropriate cookie set for that URL
-4. Fetches the page using the selected cookies
+3. Selects the best cookie file for that URL
+4. Fetches the page with the selected cookies
 5. Outputs the returned HTML
 
-The MVP is intentionally HTML-only. DOM rendering and browser automation are out of scope for now.
+The MVP is intentionally HTML-only. Browser rendering, DOM serialization, and browser automation are out of scope.
 
-## Product Scope
+## Implemented Scope
 
 ### Inputs
 
-- A directory containing cookie files
+- A directory containing JSON cookie files
 - A target URL
-- Optional CLI flags for output behavior and diagnostics
+- Optional CLI flags for timeout, redirects, output, and diagnostics
 
 ### Cookie file format
 
 - Each cookie file is a JSON file
-- File names follow a domain-based naming pattern, for example:
+- File names follow a domain-oriented pattern such as:
   - `zhihu.com.json`
   - `foreignaffairs.com.json`
   - `michaeljburry.substack.com.json`
-- Each JSON file contains a list of dictionaries / objects
-- Each object represents one cookie, for example:
-
-```json
-{
-  "domain": ".substack.com",
-  "expirationDate": 1812267128.541113
-}
-```
-
-- The full object may include additional browser-export-style fields beyond `domain` and `expirationDate`
+- Each file contains a list of browser-export-style cookie objects
+- Cookie objects may include fields such as:
+  - `name`
+  - `value`
+  - `domain`
+  - `path`
+  - `secure`
+  - `httpOnly` or `http_only`
+  - `hostOnly` or `host_only`
+  - `expirationDate`, `expires`, or `expiry`
+  - `sameSite`
 
 ### Outputs
 
-- HTML content for the requested page
-- Optional debug metadata:
+- HTML content written to stdout or a file
+- Optional diagnostics on stderr:
   - selected cookie file
-  - matched cookies
-  - final URL after redirects
-  - HTTP status
-  - cookie-selection reasoning
+  - cookie-match reasoning
+  - redirect behavior
+  - request/response progress
 
-## MVP Architecture
+## Current Architecture
 
 ```text
 CookieProxy/
@@ -59,15 +58,12 @@ CookieProxy/
       args.ts
     core/
       types.ts
-      config.ts
       errors.ts
     cookies/
       loader.ts
-      parser.ts
       normalizer.ts
       policy.ts
       matcher.ts
-      scorer.ts
       jar.ts
     fetch/
       httpClient.ts
@@ -84,45 +80,37 @@ CookieProxy/
     integration/
   docs/
     mvp-plan.md
+    roadmap.md
     cookie-policy.md
+    usage.md
 ```
 
-## Module Responsibilities
+## Runtime Design
 
-### CLI
+### Cookie ingestion and selection
 
-- Parse arguments
-- Validate user input
-- Print HTML or write it to a file
-- Expose verbose and debug modes
-
-### Cookie ingestion
-
-- Scan the cookie directory
-- Parse JSON cookie files
-- Normalize all cookies into one internal structure
-- Use file names as a first-pass hint for candidate selection, while still validating against actual cookie domains
-
-### Cookie policy
-
-- Implement matching behavior based on RFC 6265
-- Centralize project-specific deviations from the RFC
-- Keep this behavior explicit and testable
-
-### Cookie selection
-
-- Determine which cookie file or cookie set applies to a URL
-- Rank competing candidates by specificity and usability
-- Prefer cookie files whose domain-oriented file name is a close match for the target host, then validate with cookie-level matching rules
+- CookieProxy loads every JSON cookie file in the configured directory.
+- Cookie records are normalized into one internal structure before matching.
+- File names are used as selection hints, but selection is validated against cookie-level applicability.
+- For each request URL, CookieProxy chooses one winning cookie file.
 
 ### Fetch pipeline
 
-- Build a request using `undici`
-- Apply the selected cookies to the request
-- Follow redirects according to configured behavior
-- Return HTML and response metadata
+- CookieProxy recomputes the best cookie file for the current request URL.
+- The selected file's cookies are loaded into a fresh `tough-cookie` jar for that hop.
+- `tough-cookie` determines which cookies apply to the URL and serializes the outbound `Cookie` header.
+- `undici` performs the HTTP request.
+- Redirects are handled manually.
+- On each redirect target, CookieProxy reruns cookie-file selection and rebuilds the jar for the redirected URL.
 
-## Recommended CLI Shape
+### Logging and diagnostics
+
+- Logging is implemented with `pino`.
+- CLI output remains human-readable plain text on stderr.
+- `--verbose` enables progress logging and debug-level request diagnostics.
+- `--debug-cookie-match` prints the winning cookie file and scoring explanation for all candidates.
+
+## CLI Interface
 
 ```bash
 cookieproxy \
@@ -131,133 +119,68 @@ cookieproxy \
   --output ./page.html
 ```
 
-### Useful flags
+### Supported flags
 
-- `--cookies <dir>`
-- `--url <url>`
-- `--output <file>`
-- `--format <auto|netscape|json>`
-- `--timeout <ms>`
-- `--max-redirects <n>`
-- `--verbose`
-- `--debug-cookie-match`
+- `--cookies <dir>`: directory containing JSON cookie files
+- `--url <url>`: target URL to request
+- `--output <file>`: write HTML to a file instead of stdout
+- `--timeout <ms>`: request timeout in milliseconds, default `30000`
+- `--max-redirects <n>`: maximum redirect hops, default `5`
+- `--verbose`: print progress and debug diagnostics to stderr
+- `--debug-cookie-match`: print cookie selection reasoning to stderr
 
-## Third-Party Libraries
-
-### Recommended core set
+## Current Stack
 
 - `typescript`
 - `tsx`
-- `tough-cookie`
 - `undici`
-- `commander` or `yargs`
-- `zod`
-- `fast-glob`
+- `tough-cookie`
 - `pino`
 - `vitest`
 - `@types/node`
 
-### Why these libraries
-
-- `tough-cookie`: cookie parsing, storage, and matching foundation
-- `undici`: HTTP client and modern Node HTTP primitives
-- `commander` or `yargs`: CLI argument parsing
-- `zod`: runtime validation for CLI and config input
-- `fast-glob`: efficient cookie file discovery
-- `pino`: structured logs for debug and diagnostics
-- `vitest`: unit and integration testing
-
-### Not needed for the MVP
-
-- `playwright`
-- `axios`
-- `jsdom`
-
-## Phased Delivery
-
-## Phase 1: CLI MVP
-
-- Set up TypeScript project structure
-- Implement CLI argument parsing
-- Load cookie files from a directory
-- Support JSON cookie files as the initial and required MVP format
-- Normalize cookies into one internal model
-- Select the best cookie set for a target URL
-- Fetch HTML with `undici`
-- Print or save the result
-
-## Phase 2: Cookie policy hardening
-
-- Encode the customized RFC-6265-based rules in `cookies/policy.ts`
-- Add tests for edge cases and deviations
-- Improve diagnostics around cookie matching and rejection
-
-## Phase 3: Robustness
-
-- Better redirect handling
-- Timeout and retry strategy
-- Malformed-cookie tolerance
-- Clearer error messages and debug output
-
-## Testing Strategy
+## Testing Coverage
 
 ### Unit tests
 
-- cookie parsing
-- normalization
-- domain matching
-- path matching
-- expiry handling
-- secure-cookie behavior
-- `sameSite` normalization:
-  - `unspecified` -> `Lax`
-  - `no_restriction` -> `None`
-- selection scoring
-- custom policy behavior
+- cookie normalization
+- `sameSite` normalization
+- domain, path, expiry, and secure matching
+- cookie-file selection scoring
+- cookie-to-jar conversion
+- request-pipeline redirect reselection
 
 ### Integration tests
 
-- fixture-based cookie directories
-- local HTTP test server
+- local HTTP server requests
+- redirect handling
+- host changes across redirects
 - end-to-end CLI runs producing HTML output
 
-### Golden fixtures
+## MVP Definition
 
-- overlapping domains
-- expired cookies
-- secure-only cookies
-- malformed input
-- JSON files with browser-export-style cookie fields
-- `sameSite` values of `unspecified` and `no_restriction`
-- redirect scenarios
+The MVP is complete when a user can run a command like:
 
-## Key Risks
+```bash
+cookieproxy \
+  --cookies ./cookies \
+  --url https://example.com \
+  --output ./page.html
+```
 
-- Cookie files may come in inconsistent formats
-- Nonstandard policy changes may become hard to reason about if not centralized
-- Redirect flows may change which cookies should apply
-- Some sites may rely on behavior outside a simple HTTP request flow
+and the tool:
 
-## Recommended First Milestone
+- loads JSON cookie files
+- normalizes cookie records
+- selects one best cookie file per request hop
+- fetches the page with `undici`
+- applies per-request cookies through `tough-cookie`
+- follows redirects with reselection
+- writes returned HTML
 
-Build a thin but complete CLI that:
+## Known Limitations
 
-1. reads a cookie folder
-2. accepts a URL
-3. selects the best cookie set
-4. performs a request with `undici`
-5. outputs HTML
-6. explains cookie-selection decisions in debug mode
-
-## Settled MVP Decisions
-
-- The MVP input format is JSON cookie files
-- File names follow a domain-based pattern such as `zhihu.com.json`, `foreignaffairs.com.json`, or `michaeljburry.substack.com.json`
-- Each file contains a list of cookie objects
-- Output is HTML only
-- The project is CLI-first
-
-## Open Questions
-
-- Should the default output go to stdout, a file, or support both equally?
-- Should redirects reuse the same resolved jar or re-evaluate cookies per destination URL?
+- Only JSON cookie files are supported
+- Only one cookie file is selected per hop; files are not merged into one global jar
+- HTML is fetched as a plain HTTP response; no browser execution is performed
+- Retry strategy and malformed-cookie tolerance are still minimal
