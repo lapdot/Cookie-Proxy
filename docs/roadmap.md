@@ -8,9 +8,10 @@ CookieProxy has a working CLI MVP. The current implementation:
 2. normalizes browser-export-style cookie records
 3. selects one best cookie file for the current URL
 4. loads the selected file into a per-hop `tough-cookie` jar
-5. performs HTTP requests with `undici`
-6. manually follows redirects and reselects cookies for redirect targets
-7. outputs HTML to stdout or a file
+5. builds browser-like non-cookie request headers
+6. performs HTTP requests with `undici`
+7. manually follows redirects and reselects cookies for redirect targets
+8. outputs HTML to stdout or a file
 
 ## Implemented Milestones
 
@@ -46,6 +47,7 @@ CookieProxy has a working CLI MVP. The current implementation:
 
 - `undici` request layer
 - `tough-cookie` jar integration
+- browser-like Chrome/macOS navigation request headers
 - manual redirect handling
 - cookie reselection on redirect targets
 - timeout support
@@ -58,6 +60,9 @@ CookieProxy has a working CLI MVP. The current implementation:
 - `--output`
 - `--timeout`
 - `--max-redirects`
+- `--referer`
+- `--accept-language`
+- `--no-client-hints`
 - `--verbose`
 - `--debug-cookie-match`
 - meaningful exit behavior for usage and runtime failures
@@ -73,6 +78,7 @@ CookieProxy has a working CLI MVP. The current implementation:
 - Only JSON cookie files are supported
 - Cookie files are not merged into one shared jar; one file wins per hop
 - Response handling is HTML-only
+- `Accept-Encoding` is intentionally not advertised right now, to avoid compressed binary-looking output
 - No retry strategy beyond timeout failure
 - No browser execution, DOM rendering, or API/server mode
 

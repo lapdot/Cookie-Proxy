@@ -14,6 +14,9 @@ Options:
   --output <file>            Write HTML to a file instead of stdout
   --timeout <ms>             Request timeout in milliseconds (default: 30000)
   --max-redirects <n>        Maximum redirect hops to follow (default: 5)
+  --referer <url>            Send an explicit Referer header for the request chain
+  --accept-language <value>  Override the browser-like Accept-Language header
+  --no-client-hints          Disable sec-ch-ua* browser client hint headers
   --verbose                  Print progress diagnostics to stderr
   --debug-cookie-match       Print cookie selection reasoning to stderr
   --help                     Show this message
@@ -29,7 +32,7 @@ export function parseArgs(argv: string[]): CliOptions {
       throw new CliUsageError(HELP_TEXT);
     }
 
-    if (token === "--verbose" || token === "--debug-cookie-match") {
+    if (token === "--verbose" || token === "--debug-cookie-match" || token === "--no-client-hints") {
       values.set(token, true);
       continue;
     }
@@ -63,6 +66,9 @@ export function parseArgs(argv: string[]): CliOptions {
     outputPath,
     timeoutMs,
     maxRedirects,
+    referer: getOptionalString(values, "--referer"),
+    acceptLanguage: getOptionalString(values, "--accept-language"),
+    noClientHints: values.get("--no-client-hints") === true,
     verbose: values.get("--verbose") === true,
     debugCookieMatch: values.get("--debug-cookie-match") === true
   };

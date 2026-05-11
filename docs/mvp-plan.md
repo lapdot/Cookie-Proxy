@@ -11,6 +11,7 @@ CookieProxy is a CLI tool that:
 5. Outputs the returned HTML
 
 The MVP is intentionally HTML-only. Browser rendering, DOM serialization, and browser automation are out of scope.
+CookieProxy now also sends browser-like request headers for HTML navigation, but it still does not execute JavaScript or emulate a full browser network stack.
 
 ## Implemented Scope
 
@@ -18,7 +19,7 @@ The MVP is intentionally HTML-only. Browser rendering, DOM serialization, and br
 
 - A directory containing JSON cookie files
 - A target URL
-- Optional CLI flags for timeout, redirects, output, and diagnostics
+- Optional CLI flags for timeout, redirects, output, diagnostics, and limited browser-like request overrides
 
 ### Cookie file format
 
@@ -99,6 +100,7 @@ CookieProxy/
 - CookieProxy recomputes the best cookie file for the current request URL.
 - The selected file's cookies are loaded into a fresh `tough-cookie` jar for that hop.
 - `tough-cookie` determines which cookies apply to the URL and serializes the outbound `Cookie` header.
+- CookieProxy builds browser-like non-cookie headers for the request.
 - `undici` performs the HTTP request.
 - Redirects are handled manually.
 - On each redirect target, CookieProxy reruns cookie-file selection and rebuilds the jar for the redirected URL.
@@ -126,6 +128,9 @@ cookieproxy \
 - `--output <file>`: write HTML to a file instead of stdout
 - `--timeout <ms>`: request timeout in milliseconds, default `30000`
 - `--max-redirects <n>`: maximum redirect hops, default `5`
+- `--referer <url>`: send an explicit `Referer` header for the request chain
+- `--accept-language <value>`: override the browser-like `Accept-Language` header
+- `--no-client-hints`: disable the default `sec-ch-ua*` headers
 - `--verbose`: print progress and debug diagnostics to stderr
 - `--debug-cookie-match`: print cookie selection reasoning to stderr
 
@@ -183,4 +188,5 @@ and the tool:
 - Only JSON cookie files are supported
 - Only one cookie file is selected per hop; files are not merged into one global jar
 - HTML is fetched as a plain HTTP response; no browser execution is performed
+- `Accept-Encoding` is intentionally not sent, to avoid compressed binary-looking output
 - Retry strategy and malformed-cookie tolerance are still minimal

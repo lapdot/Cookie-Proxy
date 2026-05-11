@@ -20,6 +20,11 @@ export async function runCookieProxy(options: CliOptions, logger: Logger): Promi
     cookieSets,
     options.timeoutMs,
     options.maxRedirects,
+    {
+      referer: options.referer,
+      acceptLanguage: options.acceptLanguage,
+      noClientHints: options.noClientHints
+    },
     logger
   );
 }

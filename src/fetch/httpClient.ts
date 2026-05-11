@@ -1,5 +1,4 @@
 import { request } from "undici";
-import type { CookieJar } from "tough-cookie";
 
 export interface HttpResponse {
   status: number;
@@ -10,27 +9,30 @@ export interface HttpResponse {
   text(): Promise<string>;
 }
 
+export interface HttpRequestOptions {
+  url: URL;
+  headers: Record<string, string>;
+  timeoutMs: number;
+}
+
 export async function fetchWithCookies(
-  input: URL,
-  cookieJar: CookieJar,
-  timeoutMs: number
+  options: HttpRequestOptions
 ): Promise<HttpResponse> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const timeout = setTimeout(() => controller.abort(), options.timeoutMs);
 
   try {
-    const cookieHeader = await cookieJar.getCookieString(input.toString());
-    const response = await request(input, {
+    const response = await request(options.url, {
       method: "GET",
-      headers: cookieHeader ? { cookie: cookieHeader } : undefined,
+      headers: options.headers,
       signal: controller.signal,
-      headersTimeout: timeoutMs,
-      bodyTimeout: timeoutMs
+      headersTimeout: options.timeoutMs,
+      bodyTimeout: options.timeoutMs
     });
 
     return {
       status: response.statusCode,
-      url: input.toString(),
+      url: options.url.toString(),
       headers: {
         get(name: string) {
           const value = response.headers[name.toLowerCase()];

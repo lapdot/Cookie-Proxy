@@ -53,8 +53,24 @@ export interface CliOptions {
   outputPath?: string;
   timeoutMs: number;
   maxRedirects: number;
+  referer?: string;
+  acceptLanguage?: string;
+  noClientHints: boolean;
   verbose: boolean;
   debugCookieMatch: boolean;
+}
+
+export interface BrowserRequestProfileOptions {
+  referer?: string;
+  acceptLanguage?: string;
+  noClientHints: boolean;
+}
+
+export interface BrowserRequestProfile {
+  name: string;
+  headers: Record<string, string>;
+  clientHintsEnabled: boolean;
+  referer?: string;
 }
 
 export interface FetchStep {

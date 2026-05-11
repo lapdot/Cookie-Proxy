@@ -1,13 +1,15 @@
 # CookieProxy
 
-CookieProxy is a CLI-first TypeScript/Node.js tool that selects the correct cookie set for a target URL, performs an HTTP request with those cookies, and returns the resulting HTML.
+CookieProxy is a CLI-first TypeScript/Node.js tool that selects the best cookie set for a target URL, performs an HTML request with those cookies, and returns the resulting HTML.
 
-## MVP Goals
+CookieProxy uses a browser-like Chrome/macOS navigation header profile by default while remaining an HTTP client, not a real browser. It does not execute JavaScript, render DOM content, or imitate browser TLS and low-level network fingerprints.
+
+## What It Does
 
 - Accept a folder of cookie files
 - Accept a target URL
 - Choose the best cookie set for that URL
-- Fetch the page with the selected cookies
+- Fetch the page with the selected cookies and browser-like request headers
 - Output HTML to stdout or a file
 
 ## Cookie Input Assumptions
@@ -20,12 +22,21 @@ CookieProxy is a CLI-first TypeScript/Node.js tool that selects the correct cook
 
 CookieProxy is not limited to Zhihu. Any target URL is supported as long as you provide a matching cookie file for that host or one of its parent domains.
 
-## Planned Documentation
+## Request Behavior
+
+- Sends a browser-like Chrome/macOS navigation header set by default
+- Builds non-cookie headers separately from the outbound `Cookie` header
+- Manually follows redirects and reselects the best cookie file for each hop
+- Supports `--referer`, `--accept-language`, and `--no-client-hints`
+- Intentionally does not send `Accept-Encoding` right now, to avoid compressed binary-looking output from raw HTTP responses
+
+## Documentation
 
 - [MVP plan](./docs/mvp-plan.md)
+- [Usage](./docs/usage.md)
 - [Cookie policy notes](./docs/cookie-policy.md)
 
-## Planned Stack
+## Stack
 
 - TypeScript
 - Node.js
@@ -34,10 +45,11 @@ CookieProxy is not limited to Zhihu. Any target URL is supported as long as you 
 
 ## Status
 
-Initial implementation is in progress:
+Current implementation includes:
 
-- TypeScript CLI scaffold
 - JSON cookie loading and normalization
 - Cookie matching and selection
-- HTML fetch pipeline with redirect handling
-- First unit tests for policy and matching behavior
+- HTML fetch pipeline with manual redirect handling
+- Browser-like request headers for top-level HTML navigation
+- CLI controls for diagnostics and request-header overrides
+- Unit and integration test coverage for cookie, redirect, and request behavior

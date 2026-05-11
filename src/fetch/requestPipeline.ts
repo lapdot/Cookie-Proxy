@@ -1,8 +1,9 @@
-import type { CookieSet, FetchResult, FetchStep } from "../core/types.js";
+import type { BrowserRequestProfileOptions, CookieSet, FetchResult, FetchStep } from "../core/types.js";
 import { createCookieJar } from "../cookies/jar.js";
 import { selectBestCookieSet } from "../cookies/matcher.js";
 import { fetchWithCookies } from "./httpClient.js";
 import type { Logger } from "../utils/logger.js";
+import { createChromeMacOsProfile } from "./browserProfile.js";
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -11,6 +12,7 @@ export async function fetchHtmlWithCookies(
   cookieSets: CookieSet[],
   timeoutMs: number,
   maxRedirects: number,
+  browserOptions: BrowserRequestProfileOptions,
   logger: Logger
 ): Promise<FetchResult> {
   let currentUrl = new URL(targetUrl);
@@ -26,10 +28,17 @@ export async function fetchHtmlWithCookies(
     const selectedCookies = selection.selected?.cookies ?? [];
     const cookieJar = await createCookieJar(selectedCookies);
     const cookieHeader = await cookieJar.getCookieString(currentUrl.toString());
+    const browserProfile = createChromeMacOsProfile(currentUrl, browserOptions);
+    const headers = cookieHeader
+      ? { ...browserProfile.headers, cookie: cookieHeader }
+      : browserProfile.headers;
 
     logger.debug(
       [
         `Preparing request to ${currentUrl.toString()}`,
+        `browserProfile=${browserProfile.name}`,
+        `clientHints=${browserProfile.clientHintsEnabled}`,
+        `referer=${browserProfile.referer ?? "none"}`,
         `selectedCookieFile=${finalSelectedCookieFile ?? "none"}`,
         `selectedCookies=${selectedCookies.length}`,
         `cookieHeaderLength=${cookieHeader?.length ?? 0}`,
@@ -39,7 +48,11 @@ export async function fetchHtmlWithCookies(
 
     let response: Awaited<ReturnType<typeof fetchWithCookies>>;
     try {
-      response = await fetchWithCookies(currentUrl, cookieJar, timeoutMs);
+      response = await fetchWithCookies({
+        url: currentUrl,
+        headers,
+        timeoutMs
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       logger.debug(`Request to ${currentUrl.toString()} failed: ${message}`);

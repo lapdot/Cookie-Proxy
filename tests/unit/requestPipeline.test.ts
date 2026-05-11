@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchHtmlWithCookies } from "../../src/fetch/requestPipeline.js";
-import type { CookieSet } from "../../src/core/types.js";
+import type { BrowserRequestProfileOptions, CookieSet } from "../../src/core/types.js";
 import { createLogger } from "../../src/utils/logger.js";
-import type { CookieJar } from "tough-cookie";
 import type { HttpResponse } from "../../src/fetch/httpClient.js";
 
 const fetchWithCookiesMock = vi.hoisted(() => vi.fn());
@@ -52,9 +51,9 @@ function createResponse(status: number, body: string, headers: Record<string, st
   };
 }
 
-async function getCookieHeader(jar: CookieJar, url: URL): Promise<string> {
-  return jar.getCookieString(url.toString());
-}
+const defaultBrowserOptions: BrowserRequestProfileOptions = {
+  noClientHints: false
+};
 
 describe("fetchHtmlWithCookies", () => {
   beforeEach(() => {
@@ -62,9 +61,12 @@ describe("fetchHtmlWithCookies", () => {
   });
 
   it("loads the selected cookie file into the jar for the first request", async () => {
-    fetchWithCookiesMock.mockImplementation(async (url: URL, jar: CookieJar) => {
+    fetchWithCookiesMock.mockImplementation(async ({ url, headers }: { url: URL; headers: Record<string, string> }) => {
       expect(url.toString()).toBe("http://example.com/");
-      expect(await getCookieHeader(jar, url)).toBe("session=example.com");
+      expect(headers.cookie).toBe("session=example.com");
+      expect(headers["user-agent"]).toContain("Chrome/");
+      expect(headers["sec-fetch-site"]).toBe("none");
+      expect(headers.referer).toBeUndefined();
       return createResponse(200, "<html>ok</html>");
     });
 
@@ -73,6 +75,7 @@ describe("fetchHtmlWithCookies", () => {
       [createCookieSet("example.com.json", "example.com")],
       1_000,
       3,
+      defaultBrowserOptions,
       createLogger(false)
     );
 
@@ -82,14 +85,18 @@ describe("fetchHtmlWithCookies", () => {
 
   it("reselects cookies when redirects change hosts", async () => {
     fetchWithCookiesMock
-      .mockImplementationOnce(async (url: URL, jar: CookieJar) => {
+      .mockImplementationOnce(async ({ url, headers }: { url: URL; headers: Record<string, string> }) => {
         expect(url.hostname).toBe("127.0.0.1");
-        expect(await getCookieHeader(jar, url)).toBe("session=127.0.0.1");
+        expect(headers.cookie).toBe("session=127.0.0.1");
+        expect(headers["sec-fetch-site"]).toBe("none");
+        expect(headers.referer).toBeUndefined();
         return createResponse(302, "", { location: "http://localhost/final" });
       })
-      .mockImplementationOnce(async (url: URL, jar: CookieJar) => {
+      .mockImplementationOnce(async ({ url, headers }: { url: URL; headers: Record<string, string> }) => {
         expect(url.hostname).toBe("localhost");
-        expect(await getCookieHeader(jar, url)).toBe("session=localhost");
+        expect(headers.cookie).toBe("session=localhost");
+        expect(headers["sec-fetch-site"]).toBe("none");
+        expect(headers.referer).toBeUndefined();
         return createResponse(200, "<html>localhost</html>");
       });
 
@@ -101,6 +108,7 @@ describe("fetchHtmlWithCookies", () => {
       ],
       1_000,
       3,
+      defaultBrowserOptions,
       createLogger(false)
     );
 
@@ -130,6 +138,7 @@ describe("fetchHtmlWithCookies", () => {
         [createCookieSet("example.com.json", "example.com")],
         1_000,
         3,
+        defaultBrowserOptions,
         createLogger(false)
       )
     ).rejects.toThrow("without a location header");
@@ -144,8 +153,38 @@ describe("fetchHtmlWithCookies", () => {
         [createCookieSet("example.com.json", "example.com")],
         1_000,
         3,
+        defaultBrowserOptions,
         createLogger(false)
       )
     ).rejects.toThrow("timeout");
+  });
+
+  it("preserves an explicit referer across redirect hops", async () => {
+    fetchWithCookiesMock
+      .mockImplementationOnce(async ({ headers }: { headers: Record<string, string> }) => {
+        expect(headers.referer).toBe("https://example.com/start");
+        expect(headers["sec-fetch-site"]).toBe("cross-site");
+        return createResponse(302, "", { location: "http://localhost/final" });
+      })
+      .mockImplementationOnce(async ({ headers }: { headers: Record<string, string> }) => {
+        expect(headers.referer).toBe("https://example.com/start");
+        expect(headers["sec-fetch-site"]).toBe("cross-site");
+        return createResponse(200, "<html>ok</html>");
+      });
+
+    await fetchHtmlWithCookies(
+      new URL("http://127.0.0.1/start"),
+      [
+        createCookieSet("127.0.0.1.json", "127.0.0.1"),
+        createCookieSet("localhost.json", "localhost")
+      ],
+      1_000,
+      3,
+      {
+        noClientHints: false,
+        referer: "https://example.com/start"
+      },
+      createLogger(false)
+    );
   });
 });

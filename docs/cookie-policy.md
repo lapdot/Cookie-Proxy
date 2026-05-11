@@ -5,6 +5,7 @@
 CookieProxy uses a hybrid cookie model:
 
 - CookieProxy owns cookie-file loading, normalization, and winning-file selection
+- CookieProxy owns browser-like non-cookie header construction
 - `tough-cookie` owns per-request cookie applicability and outbound cookie-header serialization
 - `undici` owns HTTP transport
 
@@ -81,6 +82,7 @@ The result is an effective request model of one selected cookie file per hop.
 - normalize cookie records
 - score candidate files
 - choose the winning file for the current URL
+- build browser-like non-cookie request headers for the current URL
 - recompute selection after redirects
 
 ### Tough-cookie responsibilities
@@ -95,16 +97,29 @@ The result is an effective request model of one selected cookie file per hop.
 - execute the HTTP request
 - return status, headers, and body data to the request pipeline
 
+## Request Header Model
+
+- CookieProxy builds browser-like non-cookie headers separately from the outbound `Cookie` header.
+- The default request profile imitates a Chrome/macOS top-level HTML navigation.
+- Client hint headers (`sec-ch-ua`, `sec-ch-ua-mobile`, `sec-ch-ua-platform`) are enabled by default.
+- `--no-client-hints` disables those client hint headers.
+- `--accept-language` overrides the default `Accept-Language` value.
+- `--referer` adds an explicit `Referer` header for the request chain.
+- `Accept-Encoding` is intentionally not sent right now, to avoid compressed response bodies surfacing as binary-looking output from the raw HTTP client.
+
 ## Redirect Rule
 
 - Redirects are handled manually by CookieProxy.
 - For each redirect target:
   - the redirect URL is resolved
+  - browser-like non-cookie headers are rebuilt for the new URL
   - cookie-file selection is rerun for the new URL
   - a new `tough-cookie` jar is built from the newly selected file
   - the next request is issued with that jar
 
 This means a redirect can legitimately switch the selected cookie file, including local cases such as `127.0.0.1` redirecting to `localhost`.
+
+If an explicit `--referer` value is provided, that `Referer` header is preserved across redirect hops even while cookies are reselected per hop.
 
 ## Local Development Compatibility
 
