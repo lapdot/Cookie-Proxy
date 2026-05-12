@@ -1,5 +1,9 @@
 # CookieProxy MVP Specification
 
+> Archived document: this is a historical planning artifact.
+> For active status and next steps, use [../../plans/current-plan.md](../../plans/current-plan.md).
+> For runtime behavior and CLI reference, use [../../policies/cookie-policy.md](../../policies/cookie-policy.md) and [../../reference/cli-usage.md](../../reference/cli-usage.md).
+
 ## Purpose
 
 CookieProxy is a CLI tool that:
@@ -51,40 +55,9 @@ CookieProxy now also sends browser-like request headers for HTML navigation, but
 
 ## Current Architecture
 
-```text
-CookieProxy/
-  src/
-    cli/
-      index.ts
-      args.ts
-    core/
-      types.ts
-      errors.ts
-    cookies/
-      loader.ts
-      normalizer.ts
-      policy.ts
-      matcher.ts
-      jar.ts
-    fetch/
-      httpClient.ts
-      requestPipeline.ts
-      responseWriter.ts
-    services/
-      cookieProxyService.ts
-    utils/
-      url.ts
-      fs.ts
-      logger.ts
-  tests/
-    unit/
-    integration/
-  docs/
-    mvp-plan.md
-    roadmap.md
-    cookie-policy.md
-    usage.md
-```
+The repository tree snapshot originally embedded here has been superseded.
+
+Use [README.md](../../../README.md), [CONTEXT.md](../../../CONTEXT.md), and [docs/README.md](../../README.md) for the current navigation structure instead of treating this archived file as a structural map.
 
 ## Runtime Design
 

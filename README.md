@@ -30,11 +30,23 @@ CookieProxy is not limited to Zhihu. Any target URL is supported as long as you 
 - Supports `--referer`, `--accept-language`, and `--no-client-hints`
 - Intentionally does not send `Accept-Encoding` right now, to avoid compressed binary-looking output from raw HTTP responses
 
+## Quick Usage
+
+```bash
+cookieproxy \
+  --cookies ./cookies \
+  --url https://example.com/account \
+  --output ./page.html
+```
+
+If `--output` is omitted, HTML is written to stdout.
+
 ## Documentation
 
-- [MVP plan](./docs/mvp-plan.md)
-- [Usage](./docs/usage.md)
-- [Cookie policy notes](./docs/cookie-policy.md)
+- [Docs index](./docs/README.md)
+- [CLI usage](./docs/reference/cli-usage.md)
+- [Cookie policy](./docs/policies/cookie-policy.md)
+- [Current plan](./docs/plans/current-plan.md)
 
 ## Stack
 
@@ -53,3 +65,9 @@ Current implementation includes:
 - Browser-like request headers for top-level HTML navigation
 - CLI controls for diagnostics and request-header overrides
 - Unit and integration test coverage for cookie, redirect, and request behavior
+
+## Repository Entrypoints
+
+- `README.md`: human-first overview and quick usage
+- `CONTEXT.md`: agent-first repository entrypoint
+- `docs/README.md`: docs-tree index

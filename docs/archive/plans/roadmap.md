@@ -1,5 +1,8 @@
 # CookieProxy Roadmap
 
+> Archived document: this is a historical planning artifact.
+> For active status and next steps, use [../../plans/current-plan.md](../../plans/current-plan.md).
+
 ## Current Status
 
 CookieProxy has a working CLI MVP. The current implementation:

@@ -9,7 +9,7 @@ CookieProxy uses a hybrid cookie model:
 - `tough-cookie` owns per-request cookie applicability and outbound cookie-header serialization
 - `undici` owns HTTP transport
 
-This document describes the implemented cookie behavior for the current CLI MVP.
+This document is the source of truth for implemented cookie behavior in the current CLI.
 
 ## Input Cookie Format
 

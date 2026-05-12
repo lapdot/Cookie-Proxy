@@ -1,4 +1,4 @@
-# CookieProxy Usage
+# CookieProxy CLI Usage
 
 ## Basic Command
 
