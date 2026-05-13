@@ -25,6 +25,7 @@ It is an HTTP client, not a browser: it does not execute JavaScript, render a DO
 - `npm test`: run the test suite
 - `npm run build`: compile the TypeScript project
 - `npm run dev -- --url <url>`: run the CLI from source with `tsx`
+- `npm run hooks:install`: configure Git to use the repo-managed `.githooks/` directory
 - `npm run package:sea`: build the single-executable application artifact
 
 ## Reading Order

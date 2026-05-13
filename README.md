@@ -43,6 +43,16 @@ If `--output` is omitted, text-like responses are written to stdout. Binary resp
 
 For repeatable saved retrievals, use the ignored in-repo `artifacts/` folder with timestamped names. See [CLI usage](./docs/reference/cli-usage.md) for the artifact naming convention and binary-output notes.
 
+## Development Setup
+
+```bash
+npm install
+npm run hooks:install
+npm test
+```
+
+`npm run hooks:install` configures Git to use the repo-managed `.githooks/` directory. The pre-commit hook runs `npm test`; failing tests block the commit. Use Git's standard `--no-verify` escape hatch only when intentionally bypassing local validation.
+
 ## Documentation
 
 - [Docs index](./docs/README.md)

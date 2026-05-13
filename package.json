@@ -10,6 +10,7 @@
     "build": "tsc -p tsconfig.json",
     "build:bundle": "esbuild src/cli/index.ts --bundle --platform=node --target=node25 --format=cjs --outfile=build/cookieproxy-bundle.cjs",
     "dev": "tsx src/cli/index.ts",
+    "hooks:install": "git config core.hooksPath .githooks",
     "package:sea": "npm run build:bundle && node --build-sea sea-config.json",
     "test": "vitest run"
   },
