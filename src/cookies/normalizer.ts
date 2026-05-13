@@ -8,7 +8,9 @@ export function normalizeCookieFiles(files: CookieFile[]): CookieSet[] {
     filePath: file.filePath,
     fileName: file.fileName,
     domainHint: file.domainHint,
-    cookies: file.cookies.map((cookie, index) => normalizeCookie(cookie, file.fileName, index))
+    cookies: file.cookies.flatMap((cookie, index) =>
+      hasBlankCookieName(cookie) ? [] : [normalizeCookie(cookie, file.fileName, index)]
+    )
   }));
 }
 
@@ -90,4 +92,8 @@ function getFirstDefined(record: RawCookieRecord, keys: string[]): unknown {
   }
 
   return undefined;
+}
+
+function hasBlankCookieName(record: RawCookieRecord): boolean {
+  return typeof record.name === "string" && record.name.trim().length === 0;
 }

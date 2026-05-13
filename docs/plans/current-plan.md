@@ -12,6 +12,7 @@ CookieProxy has a working CLI MVP that:
 
 - loads a directory of JSON cookie files
 - normalizes browser-export-style cookie records
+- skips browser-export cookie records whose `name` is a blank string while preserving strict validation for missing or non-string names
 - selects one winning cookie file per request URL
 - builds browser-like non-cookie headers
 - performs HTTP requests with `undici`
@@ -35,8 +36,8 @@ CookieProxy has a working CLI MVP that:
 
 ### Policy clarification
 
-- decide how tolerant parsing should be for partially invalid cookie records
-- decide whether any nonstandard cookie-file repair behavior should be supported
+- decide whether additional partially invalid cookie-record cases should be skipped or remain hard failures
+- decide whether any nonstandard cookie-file repair behavior should be supported beyond in-memory tolerance rules
 - document any deliberate deviation from baseline RFC 6265 behavior explicitly
 
 ### Broader input support

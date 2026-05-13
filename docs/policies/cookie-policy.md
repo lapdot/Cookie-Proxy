@@ -34,6 +34,12 @@ This document is the source of truth for implemented cookie behavior in the curr
 
 ## Normalization Rules
 
+### Blank cookie names
+
+- Cookie records with a `name` field that is a blank string after trimming are dropped.
+- Missing or non-string `name` fields remain invalid and fail normalization.
+- This tolerance is applied in memory only; CookieProxy does not rewrite the source JSON cookie file.
+
 ### Host and domain
 
 - Cookie domains are normalized to lowercase hostnames without a leading dot.

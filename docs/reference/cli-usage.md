@@ -149,7 +149,9 @@ Prints cookie-selection reasoning such as:
 ### Malformed cookie JSON
 
 - Confirm the file is valid JSON
-- Confirm required fields such as `name` and `domain` are present
+- Cookie records with a blank string `name` are skipped automatically
+- Missing or non-string `name` values still fail normalization
+- Confirm required fields such as `domain` are present and valid strings
 - Check expiry values in `expirationDate`, `expires`, or `expiry`
 
 ### `127.0.0.1` versus `localhost`
