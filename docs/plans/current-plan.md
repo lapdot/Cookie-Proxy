@@ -16,7 +16,8 @@ CookieProxy has a working CLI MVP that:
 - builds browser-like non-cookie headers
 - performs HTTP requests with `undici`
 - manually follows redirects and reselects cookies per hop
-- writes HTML to stdout or a file
+- writes text-like responses to stdout and saves response bodies to files with binary-safe output
+- documents binary output, `Accept-Encoding`, and ignored in-repo artifact retrieval conventions
 
 ## Canonical Docs
 

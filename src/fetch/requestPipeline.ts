@@ -7,7 +7,7 @@ import { createChromeMacOsProfile } from "./browserProfile.js";
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
-export async function fetchHtmlWithCookies(
+export async function fetchResponseWithCookies(
   targetUrl: URL,
   cookieSets: CookieSet[],
   timeoutMs: number,
@@ -75,16 +75,19 @@ export async function fetchHtmlWithCookies(
     });
 
     if (!REDIRECT_STATUSES.has(response.status)) {
-      const html = await response.text();
+      const body = await response.bytes();
+      const contentType = response.headers.get("content-type");
       logger.debug(
         [
           `Returning final response for ${currentUrl.toString()}`,
           `status=${response.status}`,
-          `htmlLength=${html.length}`
+          `contentType=${contentType ?? "unknown"}`,
+          `byteLength=${body.byteLength}`
         ].join(" ")
       );
       return {
-        html,
+        body,
+        contentType,
         finalUrl: responseUrl,
         status: response.status,
         selectedCookieFile: finalSelectedCookieFile,

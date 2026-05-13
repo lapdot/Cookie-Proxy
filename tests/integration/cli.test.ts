@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -44,6 +44,20 @@ beforeAll(async () => {
       response.statusCode = 302;
       response.setHeader("Location", `${localhostUrl}/final`);
       response.end();
+      return;
+    }
+
+    if (request.url === "/redirect-pdf-to-localhost") {
+      response.statusCode = 302;
+      response.setHeader("Location", `${localhostUrl}/pdf`);
+      response.end();
+      return;
+    }
+
+    if (request.url === "/pdf") {
+      response.statusCode = 200;
+      response.setHeader("Content-Type", "application/pdf");
+      response.end(Buffer.from(`%PDF-${request.headers.cookie ?? "no-cookie"}`, "utf8"));
       return;
     }
 
@@ -240,6 +254,131 @@ describe("CLI integration", () => {
       expect(headers.secChUa).toBeNull();
       expect(headers.secFetchSite).toBe("cross-site");
       expect(output.stderr).toBe("");
+    } finally {
+      await rm(cookiesDir, { recursive: true, force: true });
+    }
+  });
+
+  it("saves binary PDF responses exactly when output is provided", async () => {
+    const cookiesDir = await mkdtemp(path.join(tmpdir(), "cookieproxy-"));
+    const outputDir = await mkdtemp(path.join(tmpdir(), "cookieproxy-output-"));
+    const cookieFile = path.join(cookiesDir, "127.0.0.1.json");
+    const outputPath = path.join(outputDir, "article.pdf");
+
+    await writeFile(cookieFile, JSON.stringify([
+      {
+        name: "session",
+        value: "pdf",
+        domain: "127.0.0.1",
+        path: "/",
+        secure: false,
+        httpOnly: true,
+        sameSite: "unspecified"
+      }
+    ]), "utf8");
+
+    try {
+      const output = await runCli([
+        "src/cli/index.ts",
+        "--cookies",
+        cookiesDir,
+        "--url",
+        `${baseUrl}/pdf`,
+        "--output",
+        outputPath
+      ]);
+
+      expect(output.exitCode).toBe(0);
+      expect(output.stdout).toBe("");
+      expect(output.stderr).toBe("");
+      expect(await readFile(outputPath)).toEqual(Buffer.from("%PDF-session=pdf", "utf8"));
+    } finally {
+      await rm(cookiesDir, { recursive: true, force: true });
+      await rm(outputDir, { recursive: true, force: true });
+    }
+  });
+
+  it("reselects cookies when a redirect changes hosts for binary responses", async () => {
+    const cookiesDir = await mkdtemp(path.join(tmpdir(), "cookieproxy-"));
+    const outputDir = await mkdtemp(path.join(tmpdir(), "cookieproxy-output-"));
+    const loopbackCookieFile = path.join(cookiesDir, "127.0.0.1.json");
+    const localhostCookieFile = path.join(cookiesDir, "localhost.json");
+    const outputPath = path.join(outputDir, "article.pdf");
+
+    await writeFile(loopbackCookieFile, JSON.stringify([
+      {
+        name: "session",
+        value: "loopback",
+        domain: "127.0.0.1",
+        path: "/",
+        secure: false,
+        httpOnly: true,
+        sameSite: "unspecified"
+      }
+    ]), "utf8");
+
+    await writeFile(localhostCookieFile, JSON.stringify([
+      {
+        name: "session",
+        value: "localhost",
+        domain: "localhost",
+        path: "/",
+        secure: false,
+        httpOnly: true,
+        sameSite: "unspecified"
+      }
+    ]), "utf8");
+
+    try {
+      const output = await runCli([
+        "src/cli/index.ts",
+        "--cookies",
+        cookiesDir,
+        "--url",
+        `${baseUrl}/redirect-pdf-to-localhost`,
+        "--output",
+        outputPath
+      ]);
+
+      expect(output.exitCode).toBe(0);
+      expect(output.stdout).toBe("");
+      expect(output.stderr).toBe("");
+      expect(await readFile(outputPath)).toEqual(Buffer.from("%PDF-session=localhost", "utf8"));
+    } finally {
+      await rm(cookiesDir, { recursive: true, force: true });
+      await rm(outputDir, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses to print binary responses to stdout without output", async () => {
+    const cookiesDir = await mkdtemp(path.join(tmpdir(), "cookieproxy-"));
+    const cookieFile = path.join(cookiesDir, "127.0.0.1.json");
+
+    await writeFile(cookieFile, JSON.stringify([
+      {
+        name: "session",
+        value: "pdf",
+        domain: "127.0.0.1",
+        path: "/",
+        secure: false,
+        httpOnly: true,
+        sameSite: "unspecified"
+      }
+    ]), "utf8");
+
+    try {
+      const output = await runCli([
+        "src/cli/index.ts",
+        "--cookies",
+        cookiesDir,
+        "--url",
+        `${baseUrl}/pdf`
+      ]);
+
+      expect(output.exitCode).toBe(1);
+      expect(output.stdout).toBe("");
+      expect(output.stderr).toContain("Refusing to write binary response to stdout");
+      expect(output.stderr).toContain("Provide --output <file> to save it");
     } finally {
       await rm(cookiesDir, { recursive: true, force: true });
     }

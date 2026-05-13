@@ -81,7 +81,8 @@ export interface FetchStep {
 }
 
 export interface FetchResult {
-  html: string;
+  body: Buffer;
+  contentType: string | null;
   finalUrl: string;
   status: number;
   selectedCookieFile: string | null;

@@ -6,7 +6,7 @@ export interface HttpResponse {
   headers: {
     get(name: string): string | null;
   };
-  text(): Promise<string>;
+  bytes(): Promise<Buffer>;
 }
 
 export interface HttpRequestOptions {
@@ -43,8 +43,8 @@ export async function fetchWithCookies(
           return value ?? null;
         }
       },
-      text() {
-        return response.body.text();
+      async bytes() {
+        return Buffer.from(await response.body.arrayBuffer());
       }
     };
   } finally {

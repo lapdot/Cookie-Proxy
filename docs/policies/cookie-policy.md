@@ -105,7 +105,9 @@ The result is an effective request model of one selected cookie file per hop.
 - `--no-client-hints` disables those client hint headers.
 - `--accept-language` overrides the default `Accept-Language` value.
 - `--referer` adds an explicit `Referer` header for the request chain.
-- `Accept-Encoding` is intentionally not sent right now, to avoid compressed response bodies surfacing as binary-looking output from the raw HTTP client.
+- `Accept-Encoding` is intentionally not sent right now.
+- Downloading binary files such as PDFs does not require a compressed transfer encoding.
+- Omitting `Accept-Encoding` keeps the raw response-body pipeline simple and avoids adding explicit decompression behavior.
 
 ## Redirect Rule
 

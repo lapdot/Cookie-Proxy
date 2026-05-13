@@ -6,7 +6,7 @@ Start here after `AGENTS.md` to get the current repository map, canonical comman
 
 ## Repository Purpose
 
-CookieProxy is a CLI-first TypeScript/Node.js tool that selects the best cookie set for a target URL, sends an HTTP request with browser-like headers, and returns the resulting HTML.
+CookieProxy is a CLI-first TypeScript/Node.js tool that selects the best cookie set for a target URL, sends an HTTP request with browser-like headers, and returns the response body.
 
 It is an HTTP client, not a browser: it does not execute JavaScript, render a DOM, or emulate browser TLS and low-level network fingerprints.
 

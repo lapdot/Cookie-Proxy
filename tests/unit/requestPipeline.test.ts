@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fetchHtmlWithCookies } from "../../src/fetch/requestPipeline.js";
+import { fetchResponseWithCookies } from "../../src/fetch/requestPipeline.js";
 import type { BrowserRequestProfileOptions, CookieSet } from "../../src/core/types.js";
 import { createLogger } from "../../src/utils/logger.js";
 import type { HttpResponse } from "../../src/fetch/httpClient.js";
@@ -32,10 +32,11 @@ function createCookieSet(fileName: string, domainHint: string, cookieDomain = do
   };
 }
 
-function createResponse(status: number, body: string, headers: Record<string, string> = {}): HttpResponse {
+function createResponse(status: number, body: string | Buffer, headers: Record<string, string> = {}): HttpResponse {
   const normalizedHeaders = new Map(
     Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value])
   );
+  const bodyBuffer = Buffer.isBuffer(body) ? body : Buffer.from(body, "utf8");
 
   return {
     status,
@@ -45,8 +46,8 @@ function createResponse(status: number, body: string, headers: Record<string, st
         return normalizedHeaders.get(name.toLowerCase()) ?? null;
       }
     },
-    async text() {
-      return body;
+    async bytes() {
+      return bodyBuffer;
     }
   };
 }
@@ -55,7 +56,7 @@ const defaultBrowserOptions: BrowserRequestProfileOptions = {
   noClientHints: false
 };
 
-describe("fetchHtmlWithCookies", () => {
+describe("fetchResponseWithCookies", () => {
   beforeEach(() => {
     fetchWithCookiesMock.mockReset();
   });
@@ -70,7 +71,7 @@ describe("fetchHtmlWithCookies", () => {
       return createResponse(200, "<html>ok</html>");
     });
 
-    const result = await fetchHtmlWithCookies(
+    const result = await fetchResponseWithCookies(
       new URL("http://example.com/"),
       [createCookieSet("example.com.json", "example.com")],
       1_000,
@@ -80,7 +81,26 @@ describe("fetchHtmlWithCookies", () => {
     );
 
     expect(result.selectedCookieFile).toBe("example.com.json");
-    expect(result.html).toContain("ok");
+    expect(result.body.toString("utf8")).toContain("ok");
+  });
+
+  it("returns final response bytes and content type without text conversion", async () => {
+    const pdfBytes = Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d, 0x00, 0xff]);
+    fetchWithCookiesMock.mockResolvedValue(createResponse(200, pdfBytes, {
+      "content-type": "application/pdf"
+    }));
+
+    const result = await fetchResponseWithCookies(
+      new URL("http://example.com/file.pdf"),
+      [createCookieSet("example.com.json", "example.com")],
+      1_000,
+      3,
+      defaultBrowserOptions,
+      createLogger(false)
+    );
+
+    expect(result.contentType).toBe("application/pdf");
+    expect(result.body).toEqual(pdfBytes);
   });
 
   it("reselects cookies when redirects change hosts", async () => {
@@ -100,7 +120,7 @@ describe("fetchHtmlWithCookies", () => {
         return createResponse(200, "<html>localhost</html>");
       });
 
-    const result = await fetchHtmlWithCookies(
+    const result = await fetchResponseWithCookies(
       new URL("http://127.0.0.1/start"),
       [
         createCookieSet("127.0.0.1.json", "127.0.0.1"),
@@ -133,7 +153,7 @@ describe("fetchHtmlWithCookies", () => {
     fetchWithCookiesMock.mockResolvedValue(createResponse(302, ""));
 
     await expect(
-      fetchHtmlWithCookies(
+      fetchResponseWithCookies(
         new URL("http://example.com/"),
         [createCookieSet("example.com.json", "example.com")],
         1_000,
@@ -148,7 +168,7 @@ describe("fetchHtmlWithCookies", () => {
     fetchWithCookiesMock.mockRejectedValue(new Error("timeout"));
 
     await expect(
-      fetchHtmlWithCookies(
+      fetchResponseWithCookies(
         new URL("http://example.com/"),
         [createCookieSet("example.com.json", "example.com")],
         1_000,
@@ -172,7 +192,7 @@ describe("fetchHtmlWithCookies", () => {
         return createResponse(200, "<html>ok</html>");
       });
 
-    await fetchHtmlWithCookies(
+    await fetchResponseWithCookies(
       new URL("http://127.0.0.1/start"),
       [
         createCookieSet("127.0.0.1.json", "127.0.0.1"),

@@ -11,7 +11,7 @@ Usage:
 Options:
   --cookies <dir>            Directory containing JSON cookie files (default: /Users/lapdot/Documents/projects/workspace/configs/cookies)
   --url <url>                Target URL to request
-  --output <file>            Write HTML to a file instead of stdout
+  --output <file>            Write response body to a file instead of stdout
   --timeout <ms>             Request timeout in milliseconds (default: 30000)
   --max-redirects <n>        Maximum redirect hops to follow (default: 5)
   --referer <url>            Send an explicit Referer header for the request chain

@@ -18,3 +18,8 @@ export async function writeTextFile(filePath: string, contents: string): Promise
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, contents, "utf8");
 }
+
+export async function writeBinaryFile(filePath: string, contents: Buffer): Promise<void> {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, contents);
+}

@@ -2,7 +2,7 @@ import { parseArgs } from "./args.js";
 import { CliUsageError } from "../core/errors.js";
 import { createLogger } from "../utils/logger.js";
 import { runCookieProxy } from "../services/cookieProxyService.js";
-import { writeHtmlOutput } from "../fetch/responseWriter.js";
+import { writeResponseOutput } from "../fetch/responseWriter.js";
 
 async function main(): Promise<void> {
   try {
@@ -27,7 +27,7 @@ async function main(): Promise<void> {
       }
     }
 
-    await writeHtmlOutput(result.html, options.outputPath, logger);
+    await writeResponseOutput(result, options.outputPath, logger);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     process.stderr.write(`${message}\n`);

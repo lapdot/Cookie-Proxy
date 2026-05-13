@@ -1,6 +1,6 @@
 # CookieProxy
 
-CookieProxy is a CLI-first TypeScript/Node.js tool that selects the best cookie set for a target URL, performs an HTML request with those cookies, and returns the resulting HTML.
+CookieProxy is a CLI-first TypeScript/Node.js tool that selects the best cookie set for a target URL, performs an HTTP request with those cookies, and returns the response body.
 
 CookieProxy uses a browser-like Chrome/macOS navigation header profile by default while remaining an HTTP client, not a real browser. It does not execute JavaScript, render DOM content, or imitate browser TLS and low-level network fingerprints.
 
@@ -9,8 +9,8 @@ CookieProxy uses a browser-like Chrome/macOS navigation header profile by defaul
 - Accept a folder of cookie files
 - Accept a target URL
 - Choose the best cookie set for that URL
-- Fetch the page with the selected cookies and browser-like request headers
-- Output HTML to stdout or a file
+- Fetch the page or file with the selected cookies and browser-like request headers
+- Output text-like responses to stdout or save any response body to a file
 
 ## Cookie Input Assumptions
 
@@ -28,7 +28,7 @@ CookieProxy is not limited to Zhihu. Any target URL is supported as long as you 
 - Builds non-cookie headers separately from the outbound `Cookie` header
 - Manually follows redirects and reselects the best cookie file for each hop
 - Supports `--referer`, `--accept-language`, and `--no-client-hints`
-- Intentionally does not send `Accept-Encoding` right now, to avoid compressed binary-looking output from raw HTTP responses
+- Intentionally does not send `Accept-Encoding` right now, which keeps response handling simple
 
 ## Quick Usage
 
@@ -39,7 +39,9 @@ cookieproxy \
   --output ./page.html
 ```
 
-If `--output` is omitted, HTML is written to stdout.
+If `--output` is omitted, text-like responses are written to stdout. Binary responses such as PDFs require `--output`.
+
+For repeatable saved retrievals, use the ignored in-repo `artifacts/` folder with timestamped names. See [CLI usage](./docs/reference/cli-usage.md) for the artifact naming convention and binary-output notes.
 
 ## Documentation
 
@@ -61,7 +63,8 @@ Current implementation includes:
 
 - JSON cookie loading and normalization
 - Cookie matching and selection
-- HTML fetch pipeline with manual redirect handling
+- Response fetch pipeline with manual redirect handling
+- Binary-safe file output for responses such as PDFs
 - Browser-like request headers for top-level HTML navigation
 - CLI controls for diagnostics and request-header overrides
 - Unit and integration test coverage for cookie, redirect, and request behavior
